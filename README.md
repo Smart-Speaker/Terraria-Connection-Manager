@@ -109,6 +109,28 @@ In **Docker → Add Container**, set:
 - **Path** `/logs` → `/mnt/user/appdata/terraria-connection-logger/logs` (rw)
 - **Path** `/var/run/docker.sock` → `/var/run/docker.sock` (ro)
 
+### Option C — One command from the Unraid terminal
+
+Run this as root from the Unraid console/SSH. Change `TERRARIA_CONTAINER` to
+your Terraria container's name first:
+
+```bash
+docker run -d \
+  --name terraria-connection-logger \
+  --restart unless-stopped \
+  -e TERRARIA_CONTAINER=terraria \
+  -e PRINT_TO_CONSOLE=true \
+  -e RETRY_SECONDS=15 \
+  -e LOG_FILE=/logs/terraria_connection_attempts.log \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v /mnt/user/appdata/terraria-connection-logger/logs:/logs \
+  ghcr.io/smart-speaker/terraria-connection-manager:latest
+```
+
+Containers created this way won't show the Unraid template icon/links, but they
+run identically. To update later: `docker pull` the image, then
+`docker rm -f terraria-connection-logger` and re-run the command.
+
 > **Note:** GHCR packages are private by default. After the first successful
 > Actions run, open the package on GitHub
 > (**Profile/Org → Packages → terraria-connection-manager → Package settings**)
