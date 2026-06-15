@@ -57,19 +57,27 @@ Both are required for the logger to work. The two Paths in particular are
 mandatory — without them the container can't read Docker and won't keep your
 log file.
 
-### Variables (`-e`)
+### The only setting you need to change
 
-| Variable             | Default                                      | Description                                                                                   |
-| -------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `TERRARIA_CONTAINER` | `terraria`                                   | Name (recommended) or ID of your Terraria container, e.g. `terraria` or `8ec2734d585e`.       |
-| `LOG_FILE`           | `/logs/terraria_connection_attempts.log`     | Path **inside** the container where the CSV is written. Must live under the `/logs` Path below.|
-| `PRINT_TO_CONSOLE`   | `true`                                       | Also print matched attempts to this container's Docker logs.                                  |
-| `RETRY_SECONDS`      | `15`                                         | Wait time before retrying when the Terraria container is missing or the log stream drops.     |
-| `JOIN_WINDOW_SECONDS`| `30`                                         | Max seconds between a `connecting` line and a `has joined` line for them to be paired.         |
+| Variable             | Default      | Description                                                                              |
+| -------------------- | ------------ | ---------------------------------------------------------------------------------------- |
+| `TERRARIA_CONTAINER` | `terraria`   | Name (recommended) or ID of your Terraria container, e.g. `terraria` or `8ec2734d585e`.  |
 
 > **Name vs. ID:** A container **name** (like `terraria`) is stable. A short
 > **ID** (like `8ec2734d585e`) changes every time the container is recreated —
 > which Unraid does on every update or template edit. Prefer the name.
+
+### Advanced settings (optional — defaults baked into the image)
+
+You normally never touch these. They ship with working defaults; override one
+only by adding it as an extra `-e` variable.
+
+| Variable             | Default                                      | Description                                                                                   |
+| -------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `LOG_FILE`           | `/logs/terraria_connection_attempts.log`     | Path **inside** the container where the CSV is written. Must live under the `/logs` Path below.|
+| `PRINT_TO_CONSOLE`   | `true`                                       | Also print matched attempts to this container's Docker logs.                                  |
+| `RETRY_SECONDS`      | `15`                                         | Wait time before retrying when the Terraria container is missing or the log stream drops.     |
+| `JOIN_WINDOW_SECONDS`| `30`                                         | Max seconds between a `connecting` line and a `has joined` line for them to be paired.         |
 
 ### Paths (`-v`) — required
 
@@ -140,13 +148,13 @@ docker run -d \
   --name terraria-connection-logger \
   --restart unless-stopped \
   -e TERRARIA_CONTAINER=terraria \
-  -e PRINT_TO_CONSOLE=true \
-  -e RETRY_SECONDS=15 \
-  -e LOG_FILE=/logs/terraria_connection_attempts.log \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
   -v /mnt/user/appdata/terraria-connection-logger/logs:/logs \
   ghcr.io/smart-speaker/terraria-connection-manager:latest
 ```
+
+`TERRARIA_CONTAINER` is the only variable you set — everything else uses the
+image defaults.
 
 Containers created this way won't show the Unraid template icon/links, but they
 run identically. To update later: `docker pull` the image, then

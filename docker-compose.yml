@@ -6,20 +6,14 @@ services:
     restart: unless-stopped
 
     environment:
-      # Your Terraria container's NAME (recommended) or ID.
-      # The name is stable; an ID like 8ec2734d585e changes whenever the
-      # Terraria container is recreated/updated.
+      # The ONLY setting you need to change: your Terraria container's NAME
+      # (recommended) or ID. The name is stable; an ID like 8ec2734d585e
+      # changes whenever the Terraria container is recreated/updated.
+      #
+      # Everything else (log path, console output, retry/join timing) uses
+      # sensible defaults baked into the image. To override an advanced
+      # default, add it here, e.g. RETRY_SECONDS: "30".
       TERRARIA_CONTAINER: "terraria"
-
-      # Log location inside this logger container (maps to the volume below).
-      LOG_FILE: "/logs/terraria_connection_attempts.log"
-
-      # Optional: also print matched attempts to this container's Docker logs.
-      PRINT_TO_CONSOLE: "true"
-
-      # Optional: seconds to wait before retrying when the Terraria
-      # container is missing or the log stream drops.
-      RETRY_SECONDS: "15"
 
     volumes:
       # Required so this container can read logs from the Terraria container.

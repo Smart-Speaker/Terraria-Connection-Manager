@@ -32,36 +32,6 @@
     Required="true"
     Mask="false">terraria</Config>
   <Config
-    Name="Print To Console"
-    Target="PRINT_TO_CONSOLE"
-    Default="true"
-    Mode=""
-    Description="Also print matched connection attempts to this container's log."
-    Type="Variable"
-    Display="always"
-    Required="false"
-    Mask="false">true</Config>
-  <Config
-    Name="Retry Seconds"
-    Target="RETRY_SECONDS"
-    Default="15"
-    Mode=""
-    Description="Seconds to wait before retrying when the Terraria container is missing or the log stream drops."
-    Type="Variable"
-    Display="advanced"
-    Required="false"
-    Mask="false">15</Config>
-  <Config
-    Name="Log File Path (in container)"
-    Target="LOG_FILE"
-    Default="/logs/terraria_connection_attempts.log"
-    Mode=""
-    Description="Path inside the container where the CSV log is written. Must live under the /logs mount."
-    Type="Variable"
-    Display="advanced"
-    Required="false"
-    Mask="false">/logs/terraria_connection_attempts.log</Config>
-  <Config
     Name="Logs"
     Target="/logs"
     Default="/mnt/user/appdata/terraria-connection-logger/logs"
