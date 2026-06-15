@@ -1,26 +1,46 @@
 # Terraria Connection Logger
 
 A small Docker container that monitors a Terraria server container's logs and
-records connection attempts to a CSV file.
+records connection attempts — and **which player each connection belongs to** —
+to a CSV file.
 
-It watches for lines like:
-
-```text
-194.163.172.10:33746 is connecting...
-```
-
-and appends a row to `terraria_connection_attempts.log`:
+Terraria logs a connection and then the player's join on the next line:
 
 ```text
-timestamp,ip,port,raw_line
-"2026-06-15 12:34:56","194.163.172.10","33746","194.163.172.10:33746 is connecting..."
+86.24.220.78:45738 is connecting...
+Nic has joined.
 ```
+
+The logger pairs these up and writes one row per event to
+`terraria_connection_attempts.log`:
+
+```text
+timestamp,event,name,ip,port,raw_line
+"2026-06-15 19:35:14","connecting","","86.24.220.78","45738","86.24.220.78:45738 is connecting..."
+"2026-06-15 19:35:15","joined","Nic","86.24.220.78","45738","Nic has joined."
+"2026-06-15 20:01:02","left","Nic","86.24.220.78","45738","Nic has left."
+```
+
+The `event` column is one of:
+
+- **`connecting`** — an IP attempted a connection. Scanners/bots that connect
+  but never join show up only as `connecting` rows (no name), which makes them
+  easy to spot.
+- **`joined`** — a player finished connecting. The `name`, `ip`, and `port` are
+  filled in by matching the join to the most recent `connecting` line (within
+  `JOIN_WINDOW_SECONDS`).
+- **`left`** — a player disconnected. Their IP is recalled from when they joined.
 
 ## How it works
 
 The container mounts the host Docker socket (read-only) and follows the logs of
 your Terraria container. It does **not** touch or restart the Terraria
 container — it only reads its log stream.
+
+Name↔IP matching is a heuristic based on log ordering, so on a busy server where
+several people connect in the same second a name could occasionally be paired
+with the wrong recent IP. The `raw_line` column is always the unmodified log
+line so you can verify any row by hand.
 
 ## Configuration
 
@@ -45,6 +65,7 @@ log file.
 | `LOG_FILE`           | `/logs/terraria_connection_attempts.log`     | Path **inside** the container where the CSV is written. Must live under the `/logs` Path below.|
 | `PRINT_TO_CONSOLE`   | `true`                                       | Also print matched attempts to this container's Docker logs.                                  |
 | `RETRY_SECONDS`      | `15`                                         | Wait time before retrying when the Terraria container is missing or the log stream drops.     |
+| `JOIN_WINDOW_SECONDS`| `30`                                         | Max seconds between a `connecting` line and a `has joined` line for them to be paired.         |
 
 > **Name vs. ID:** A container **name** (like `terraria`) is stable. A short
 > **ID** (like `8ec2734d585e`) changes every time the container is recreated —
