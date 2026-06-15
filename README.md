@@ -45,28 +45,32 @@ docker compose up -d --build
 
 Edit `docker-compose.yml` to set `TERRARIA_CONTAINER` and the host log path.
 
+## Docker image
+
+Every push to `main` builds and publishes a multi-tag image to the GitHub
+Container Registry via GitHub Actions:
+
+```text
+ghcr.io/smart-speaker/terraria-connection-manager:latest
+```
+
+Tagged releases (push a `v1.2.3` git tag) also publish `1.2.3` and `1.2`
+image tags. No local build is needed to run it.
+
 ## Run on Unraid
 
-There are two ways to install this on Unraid.
+There are two ways to install this on Unraid. Both pull the prebuilt image
+above — no building on the Unraid host.
 
 ### Option A — Add Container template (recommended)
 
-1. Build the image on the Unraid host so it's available locally:
-
-   ```bash
-   cd /path/to/terraria-connection-logger
-   docker build -t terraria-connection-logger:latest .
-   ```
-
-   (Or push it to a registry and set that as the repository.)
-
-2. Copy `unraid-template.xml` to:
+1. Copy `unraid-template.xml` to:
 
    ```text
-   /boot/config/plugins/dockerMan/templates-user/my-terraria-connection-logger.xml
+   /boot/config/plugins/dockerMan/templates-user/my-terraria-connection-manager.xml
    ```
 
-3. In the Unraid web UI: **Docker → Add Container**, pick
+2. In the Unraid web UI: **Docker → Add Container**, pick
    `terraria-connection-logger` from the template dropdown, set the
    **Terraria Container** field to your server's container name, and click
    **Apply**.
@@ -75,10 +79,15 @@ There are two ways to install this on Unraid.
 
 In **Docker → Add Container**, set:
 
-- **Repository:** `terraria-connection-logger:latest` (after building it on the host)
+- **Repository:** `ghcr.io/smart-speaker/terraria-connection-manager:latest`
 - **Variable** `TERRARIA_CONTAINER` → your Terraria container name
 - **Path** `/logs` → `/mnt/user/appdata/terraria-connection-logger/logs` (rw)
 - **Path** `/var/run/docker.sock` → `/var/run/docker.sock` (ro)
+
+> **Note:** GHCR packages are private by default. After the first successful
+> Actions run, open the package on GitHub
+> (**Profile/Org → Packages → terraria-connection-manager → Package settings**)
+> and set visibility to **Public** so Unraid can pull it without a login.
 
 ## Logs
 

@@ -1,18 +1,18 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>terraria-connection-logger</Name>
-  <Repository>terraria-connection-logger:latest</Repository>
+  <Repository>ghcr.io/smart-speaker/terraria-connection-manager:latest</Repository>
   <Registry/>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>bash</Shell>
   <Privileged>false</Privileged>
-  <Support/>
-  <Project/>
+  <Support>https://github.com/Smart-Speaker/Terraria-Connection-Manager/issues</Support>
+  <Project>https://github.com/Smart-Speaker/Terraria-Connection-Manager</Project>
   <Overview>Monitors a Terraria server container's Docker logs and records connection attempts (IP and port) to a CSV file. Point it at your Terraria container by name (recommended) or ID.</Overview>
   <Category>Tools: GameServers:</Category>
   <WebUI/>
-  <TemplateURL/>
+  <TemplateURL>https://raw.githubusercontent.com/Smart-Speaker/Terraria-Connection-Manager/main/unraid-template.xml</TemplateURL>
   <Icon>https://terraria.org/favicon.ico</Icon>
   <ExtraParams/>
   <PostArgs/>
