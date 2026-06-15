@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <Name>terraria-connection-logger</Name>
+  <Name>terraria-connection-manager</Name>
   <Repository>ghcr.io/smart-speaker/terraria-connection-manager:latest</Repository>
   <Registry/>
   <Network>bridge</Network>
@@ -9,9 +9,9 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Smart-Speaker/Terraria-Connection-Manager/issues</Support>
   <Project>https://github.com/Smart-Speaker/Terraria-Connection-Manager</Project>
-  <Overview>Monitors a Terraria server container's Docker logs and records connection attempts (IP and port) to a CSV file. Point it at your Terraria container by name (recommended) or ID.</Overview>
+  <Overview>Web control panel for a Terraria server container (works great with ich777/terrariaserver). Live console, player list with IPs, kick/ban, and automatic blacklisting of IPs that hammer the server without joining. Point it at your Terraria container by name (recommended) or ID.</Overview>
   <Category>Tools: GameServers:</Category>
-  <WebUI/>
+  <WebUI>http://[IP]:[PORT:8780]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/Smart-Speaker/Terraria-Connection-Manager/main/unraid-template.xml</TemplateURL>
   <Icon>https://terraria.org/favicon.ico</Icon>
   <ExtraParams/>
@@ -24,31 +24,71 @@
   <Config
     Name="Terraria Container"
     Target="TERRARIA_CONTAINER"
-    Default="terraria"
+    Default="Terraria"
     Mode=""
     Description="Name (recommended) or ID of your Terraria container. The name is stable; an ID like 8ec2734d585e changes when the container is recreated."
     Type="Variable"
     Display="always"
     Required="true"
-    Mask="false">terraria</Config>
+    Mask="false">Terraria</Config>
   <Config
-    Name="Logs"
-    Target="/logs"
-    Default="/mnt/user/appdata/terraria-connection-logger/logs"
+    Name="WebUI Port"
+    Target="8780"
+    Default="8780"
+    Mode="tcp"
+    Description="Port for the web control panel."
+    Type="Port"
+    Display="always"
+    Required="true"
+    Mask="false">8780</Config>
+  <Config
+    Name="Web Password"
+    Target="WEB_PASSWORD"
+    Default=""
+    Mode=""
+    Description="Optional. Set a password to require login (user 'admin') before anyone can use the panel. Leave blank for no auth."
+    Type="Variable"
+    Display="always"
+    Required="false"
+    Mask="true"></Config>
+  <Config
+    Name="Data"
+    Target="/data"
+    Default="/mnt/user/appdata/terraria-connection-manager"
     Mode="rw"
-    Description="Where connection logs are saved on Unraid."
+    Description="Stores the connection CSV, blacklist.json, and whitelist.json."
     Type="Path"
     Display="always"
     Required="true"
-    Mask="false">/mnt/user/appdata/terraria-connection-logger/logs</Config>
+    Mask="false">/mnt/user/appdata/terraria-connection-manager</Config>
   <Config
     Name="Docker Socket"
     Target="/var/run/docker.sock"
     Default="/var/run/docker.sock"
     Mode="ro"
-    Description="Read-only access to the Docker socket so the logger can read the Terraria container's logs. Required."
+    Description="Read-only Docker socket. Required so the panel can read the Terraria container's logs and send it console commands."
     Type="Path"
     Display="advanced"
     Required="true"
     Mask="false">/var/run/docker.sock</Config>
+  <Config
+    Name="Auto-blacklist attempt threshold"
+    Target="ATTEMPT_THRESHOLD"
+    Default="6"
+    Mode=""
+    Description="Number of connection attempts (without ever joining) within the time window before an IP is auto-blacklisted."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">6</Config>
+  <Config
+    Name="Auto-blacklist time window (seconds)"
+    Target="ATTEMPT_WINDOW"
+    Default="600"
+    Mode=""
+    Description="Seconds over which connection attempts are counted toward the threshold."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">600</Config>
 </Container>

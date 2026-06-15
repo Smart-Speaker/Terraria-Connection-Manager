@@ -1,23 +1,45 @@
 services:
-  terraria-connection-logger:
+  terraria-connection-manager:
     build: .
-    image: terraria-connection-logger
-    container_name: terraria-connection-logger
+    image: ghcr.io/smart-speaker/terraria-connection-manager:latest
+    container_name: terraria-connection-manager
     restart: unless-stopped
 
+    # Web control panel. Browse to http://<host>:8780
+    ports:
+      - "8780:8780"
+
     environment:
-      # The ONLY setting you need to change: your Terraria container's NAME
+      # The ONLY setting you must change: your Terraria container's NAME
       # (recommended) or ID. The name is stable; an ID like 8ec2734d585e
       # changes whenever the Terraria container is recreated/updated.
-      #
-      # Everything else (log path, console output, retry/join timing) uses
-      # sensible defaults baked into the image. To override an advanced
-      # default, add it here, e.g. RETRY_SECONDS: "30".
-      TERRARIA_CONTAINER: "terraria"
+      TERRARIA_CONTAINER: "Terraria"
+
+      # --- Optional: protect the web UI (it can kick/ban). Leave password
+      #     blank to disable auth.
+      # WEB_USER: "admin"
+      # WEB_PASSWORD: ""
+
+      # --- Optional: auto-blacklist tuning (defaults shown).
+      # AUTO_BLACKLIST: "true"
+      # ATTEMPT_THRESHOLD: "6"     # attempts without joining before blacklisting
+      # ATTEMPT_WINDOW: "600"      # seconds the attempts are counted over
+
+      # --- Optional: actually DROP blacklisted IPs at the firewall.
+      #     Requires the two commented lines below (host network + NET_ADMIN).
+      # FIREWALL_ENABLED: "true"
 
     volumes:
-      # Required so this container can read logs from the Terraria container.
+      # Required: lets this container read the Terraria container's logs and
+      # send console commands.
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-      # Where logs are saved on Unraid.
-      - /mnt/user/appdata/terraria-connection-logger/logs:/logs
+      # All data: connection CSV, blacklist.json, whitelist.json.
+      - /mnt/user/appdata/terraria-connection-manager:/data
+
+    # --- Uncomment BOTH lines to enable firewall dropping (with FIREWALL_ENABLED).
+    #     Note: host networking ignores the `ports:` mapping above; the UI is
+    #     then reachable directly on WEB_PORT.
+    # network_mode: host
+    # cap_add:
+    #   - NET_ADMIN

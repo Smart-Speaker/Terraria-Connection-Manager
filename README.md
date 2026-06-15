@@ -1,95 +1,149 @@
-# Terraria Connection Logger
+# Terraria Connection Manager
 
-A small Docker container that monitors a Terraria server container's logs and
-records connection attempts — and **which player each connection belongs to** —
-to a CSV file.
+A lightweight **web control panel** for a Terraria server running in Docker
+(built for Unraid, works great with the `ich777/terrariaserver` image).
 
-Terraria logs a connection and then the player's join on the next line:
+It reads the Terraria container's console over the Docker socket and lets you:
 
-```text
-86.24.220.78:45738 is connecting...
-Nic has joined.
+- **Live console** — watch server output and type any command (`help`,
+  `playing`, `say ...`, `time`, etc.); output appears in the panel.
+- **Player list with IPs** — see who's online and the IP each player connected
+  from, matched automatically from the join logs.
+- **Kick / ban** — one-click `kick <player>` / `ban <player>`.
+- **Connection logging** — every attempt/join/leave is written to a CSV.
+- **Auto-blacklist** — IPs that repeatedly try to connect but never join get
+  flagged automatically. With the optional firewall mode enabled, they're
+  **dropped** so they can't reach the server.
+- **Whitelist** — IPs you mark as trusted are never auto-blacklisted.
+
+Everything except the firewall-drop feature works with just the Docker socket
+mounted and a web port — no special privileges.
+
+## How it talks to the server
+
+The `ich777/terrariaserver` image runs the Terraria server inside a `screen`
+session (that's what its built-in web console attaches to). This panel sends
+commands by injecting keystrokes into that screen session through the Docker
+socket — the same as typing into the console. The session name and user are
+auto-detected; override with `SCREEN_SESSION` / `SCREEN_USER` only if needed.
+
+Because the server's console output also shows up in `docker logs`, the panel
+captures command responses (like the `playing` player list) from the same
+stream it already watches.
+
+## Quick start (Unraid)
+
+### Option A — Community Applications template (recommended)
+
+1. Copy `unraid-template.xml` to
+   `/boot/config/plugins/dockerMan/templates-user/my-terraria-connection-manager.xml`.
+2. **Docker → Add Container**, pick `terraria-connection-manager`, set
+   **Terraria Container** to your server's name (e.g. `Terraria`), **Apply**.
+3. Click the container's **WebUI** to open the panel.
+
+### Option B — One command from the Unraid terminal
+
+```bash
+docker run -d \
+  --name terraria-connection-manager \
+  --restart unless-stopped \
+  -p 8780:8780 \
+  -e TERRARIA_CONTAINER=Terraria \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v /mnt/user/appdata/terraria-connection-manager:/data \
+  ghcr.io/smart-speaker/terraria-connection-manager:latest
 ```
 
-The logger pairs these up and writes one row per event to
-`terraria_connection_attempts.log`:
-
-```text
-timestamp,event,name,ip,port,raw_line
-"2026-06-15 19:35:14","connecting","","86.24.220.78","45738","86.24.220.78:45738 is connecting..."
-"2026-06-15 19:35:15","joined","Nic","86.24.220.78","45738","Nic has joined."
-"2026-06-15 20:01:02","left","Nic","86.24.220.78","45738","Nic has left."
-```
-
-The `event` column is one of:
-
-- **`connecting`** — an IP attempted a connection. Scanners/bots that connect
-  but never join show up only as `connecting` rows (no name), which makes them
-  easy to spot.
-- **`joined`** — a player finished connecting. The `name`, `ip`, and `port` are
-  filled in by matching the join to the most recent `connecting` line (within
-  `JOIN_WINDOW_SECONDS`).
-- **`left`** — a player disconnected. Their IP is recalled from when they joined.
-
-## How it works
-
-The container mounts the host Docker socket (read-only) and follows the logs of
-your Terraria container. It does **not** touch or restart the Terraria
-container — it only reads its log stream.
-
-Name↔IP matching is a heuristic based on log ordering, so on a busy server where
-several people connect in the same second a name could occasionally be paired
-with the wrong recent IP. The `raw_line` column is always the unmodified log
-line so you can verify any row by hand.
+Then browse to `http://<unraid-ip>:8780`.
 
 ## Configuration
 
-This container has two kinds of settings. In Unraid's **Add Container** screen
-each row has a **Type** dropdown that is either *Variable* or *Path*:
+`TERRARIA_CONTAINER` is the only setting you normally change. Everything else
+has a working default baked into the image.
 
-- **Variable** — a key/value setting passed to the program as an environment
-  variable (Docker `-e KEY=value`). Just text.
-- **Path** — a folder/file mapping between your Unraid server (the host) and
-  the container (Docker `-v host:container`). This is how files get shared in
-  and out of the container.
+### Common
 
-Both are required for the logger to work. The two Paths in particular are
-mandatory — without them the container can't read Docker and won't keep your
-log file.
+| Variable             | Default     | Description                                                                       |
+| -------------------- | ----------- | --------------------------------------------------------------------------------- |
+| `TERRARIA_CONTAINER` | `terraria`  | Name (recommended) or ID of your Terraria container, e.g. `Terraria`.             |
+| `WEB_PORT`           | `8780`      | Port the control panel listens on.                                                |
+| `WEB_PASSWORD`       | *(empty)*   | Set to require login (username `WEB_USER`, default `admin`). Blank = no auth.      |
 
-### The only setting you need to change
+> The panel can kick/ban and edit firewall rules. If it's reachable beyond your
+> LAN, set `WEB_PASSWORD`.
 
-| Variable             | Default      | Description                                                                              |
-| -------------------- | ------------ | ---------------------------------------------------------------------------------------- |
-| `TERRARIA_CONTAINER` | `terraria`   | Name (recommended) or ID of your Terraria container, e.g. `terraria` or `8ec2734d585e`.  |
+### Auto-blacklist
 
-> **Name vs. ID:** A container **name** (like `terraria`) is stable. A short
-> **ID** (like `8ec2734d585e`) changes every time the container is recreated —
-> which Unraid does on every update or template edit. Prefer the name.
+| Variable            | Default | Description                                                                 |
+| ------------------- | ------- | --------------------------------------------------------------------------- |
+| `AUTO_BLACKLIST`    | `true`  | Flag IPs that connect repeatedly without joining.                           |
+| `ATTEMPT_THRESHOLD` | `6`     | Attempts (without joining) within the window before blacklisting.           |
+| `ATTEMPT_WINDOW`    | `600`   | Seconds the attempts are counted over.                                      |
 
-### Advanced settings (optional — defaults baked into the image)
+### Firewall drop (optional, privileged)
 
-You normally never touch these. They ship with working defaults; override one
-only by adding it as an extra `-e` variable.
+Vanilla Terraria has no IP ban — its `ban` command only bans a *connected
+player by name*. To actually **drop** a blacklisted IP's packets, this image
+can manage an `iptables` chain on the host. That requires extra privileges:
 
-| Variable             | Default                                      | Description                                                                                   |
-| -------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `LOG_FILE`           | `/logs/terraria_connection_attempts.log`     | Path **inside** the container where the CSV is written. Must live under the `/logs` Path below.|
-| `PRINT_TO_CONSOLE`   | `true`                                       | Also print matched attempts to this container's Docker logs.                                  |
-| `RETRY_SECONDS`      | `15`                                         | Wait time before retrying when the Terraria container is missing or the log stream drops.     |
-| `JOIN_WINDOW_SECONDS`| `30`                                         | Max seconds between a `connecting` line and a `has joined` line for them to be paired.         |
+```bash
+docker run -d \
+  --name terraria-connection-manager \
+  --restart unless-stopped \
+  --network host \
+  --cap-add NET_ADMIN \
+  -e TERRARIA_CONTAINER=Terraria \
+  -e FIREWALL_ENABLED=true \
+  -e TERRARIA_PORT=7777 \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v /mnt/user/appdata/terraria-connection-manager:/data \
+  ghcr.io/smart-speaker/terraria-connection-manager:latest
+```
 
-### Paths (`-v`) — required
+| Variable           | Default | Description                                                                 |
+| ------------------ | ------- | --------------------------------------------------------------------------- |
+| `FIREWALL_ENABLED` | `false` | Manage iptables DROP rules for blacklisted IPs. Needs host net + NET_ADMIN. |
+| `TERRARIA_PORT`    | `7777`  | Your Terraria game port (informational; rules drop the IP entirely).        |
 
-| Container path         | Host path (example)                                        | Mode | Why                                                                                  |
-| ---------------------- | ---------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------ |
-| `/var/run/docker.sock` | `/var/run/docker.sock`                                     | ro   | Lets this container read the Terraria container's logs. Without it nothing works.    |
-| `/logs`                | `/mnt/user/appdata/terraria-connection-logger/logs`        | rw   | Where the CSV is saved on your server so it survives restarts. `LOG_FILE` points here.|
+With host networking the `-p 8780:8780` mapping is ignored — the panel is
+reachable directly on `WEB_PORT`. Rules live in a dedicated `TERRARIA_BL`
+chain, so removing the container/rules never touches your other firewall rules.
+**If firewall mode is off, blacklisting still records and lists the IP** — it
+just doesn't drop packets.
 
-> **How the two relate:** `LOG_FILE` is a *Variable* pointing at a path *inside*
-> the container (`/logs/...`). `/logs` is a *Path* that maps that in-container
-> folder to a real folder on your Unraid array. Keep `LOG_FILE` under `/logs` so
-> the file lands in the host folder you mapped.
+### Advanced
+
+| Variable              | Default                       | Description                                         |
+| --------------------- | ----------------------------- | --------------------------------------------------- |
+| `LOG_FILE`            | `/data/connection_log.csv`    | Where the connection CSV is written.                |
+| `JOIN_WINDOW_SECONDS` | `30`                          | Max gap to pair a `connecting` line with a join.    |
+| `SCREEN_SESSION`      | *(auto)*                      | Override the screen session name.                   |
+| `SCREEN_USER`         | *(auto)*                      | Override the screen session user.                   |
+| `CMD_NEWLINE`         | `cr`                          | Console Enter key: `cr`, `lf`, or `crlf`. Switch to `lf` if commands don't register. |
+
+## Data files
+
+Everything persists under the `/data` mount:
+
+| File                  | Contents                                                  |
+| --------------------- | --------------------------------------------------------- |
+| `connection_log.csv`  | Every `connecting` / `joined` / `left` event.             |
+| `blacklist.json`      | Blacklisted IPs with reason, timestamp, and auto flag.    |
+| `whitelist.json`      | Trusted IPs that are never auto-blacklisted.              |
+
+CSV columns: `timestamp,event,name,ip,port,raw_line`. `connecting` rows with no
+name are connection attempts that never joined (scanners/bots).
+
+## Updating
+
+```bash
+docker pull ghcr.io/smart-speaker/terraria-connection-manager:latest
+docker rm -f terraria-connection-manager
+# re-run your docker run command (or just hit "Apply" in the Unraid UI)
+```
+
+The image is built and published to GHCR automatically by GitHub Actions on
+every push to `main` (and on `v*` tags).
 
 ## Run with Docker Compose
 
@@ -97,81 +151,15 @@ only by adding it as an extra `-e` variable.
 docker compose up -d --build
 ```
 
-Edit `docker-compose.yml` to set `TERRARIA_CONTAINER` and the host log path.
+Edit `docker-compose.yml` to set `TERRARIA_CONTAINER`; uncomment the firewall
+lines if you want IP dropping.
 
-## Docker image
+## Notes & caveats
 
-Every push to `main` builds and publishes a multi-tag image to the GitHub
-Container Registry via GitHub Actions:
-
-```text
-ghcr.io/smart-speaker/terraria-connection-manager:latest
-```
-
-Tagged releases (push a `v1.2.3` git tag) also publish `1.2.3` and `1.2`
-image tags. No local build is needed to run it.
-
-## Run on Unraid
-
-There are two ways to install this on Unraid. Both pull the prebuilt image
-above — no building on the Unraid host.
-
-### Option A — Add Container template (recommended)
-
-1. Copy `unraid-template.xml` to:
-
-   ```text
-   /boot/config/plugins/dockerMan/templates-user/my-terraria-connection-manager.xml
-   ```
-
-2. In the Unraid web UI: **Docker → Add Container**, pick
-   `terraria-connection-logger` from the template dropdown, set the
-   **Terraria Container** field to your server's container name, and click
-   **Apply**.
-
-### Option B — Manual Add Container
-
-In **Docker → Add Container**, set:
-
-- **Repository:** `ghcr.io/smart-speaker/terraria-connection-manager:latest`
-- **Variable** `TERRARIA_CONTAINER` → your Terraria container name
-- **Path** `/logs` → `/mnt/user/appdata/terraria-connection-logger/logs` (rw)
-- **Path** `/var/run/docker.sock` → `/var/run/docker.sock` (ro)
-
-### Option C — One command from the Unraid terminal
-
-Run this as root from the Unraid console/SSH. Change `TERRARIA_CONTAINER` to
-your Terraria container's name first:
-
-```bash
-docker run -d \
-  --name terraria-connection-logger \
-  --restart unless-stopped \
-  -e TERRARIA_CONTAINER=terraria \
-  -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -v /mnt/user/appdata/terraria-connection-logger/logs:/logs \
-  ghcr.io/smart-speaker/terraria-connection-manager:latest
-```
-
-`TERRARIA_CONTAINER` is the only variable you set — everything else uses the
-image defaults.
-
-Containers created this way won't show the Unraid template icon/links, but they
-run identically. To update later: `docker pull` the image, then
-`docker rm -f terraria-connection-logger` and re-run the command.
-
-> **Note:** GHCR packages are private by default. After the first successful
-> Actions run, open the package on GitHub
-> (**Profile/Org → Packages → terraria-connection-manager → Package settings**)
-> and set visibility to **Public** so Unraid can pull it without a login.
-
-## Logs
-
-The CSV is written to your mapped host path, by default:
-
-```text
-/mnt/user/appdata/terraria-connection-logger/logs/terraria_connection_attempts.log
-```
-
-Matched attempts also appear in this container's own log (when
-`PRINT_TO_CONSOLE` is `true`).
+- **Name vs. ID:** a container **name** (`Terraria`) is stable; a short **ID**
+  (`8ec2734d585e`) changes every time the container is recreated. Prefer the name.
+- **Name↔IP matching** is a heuristic based on log ordering; on a busy server a
+  name could occasionally pair with the wrong recent IP. The `raw_line` column
+  preserves the original line so you can verify.
+- The panel only **reads** the Terraria container's logs and **sends console
+  commands**; it never restarts or modifies the container itself.
