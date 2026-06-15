@@ -1,0 +1,29 @@
+services:
+  terraria-connection-logger:
+    build: .
+    image: terraria-connection-logger
+    container_name: terraria-connection-logger
+    restart: unless-stopped
+
+    environment:
+      # Your Terraria container's NAME (recommended) or ID.
+      # The name is stable; an ID like 8ec2734d585e changes whenever the
+      # Terraria container is recreated/updated.
+      TERRARIA_CONTAINER: "terraria"
+
+      # Log location inside this logger container (maps to the volume below).
+      LOG_FILE: "/logs/terraria_connection_attempts.log"
+
+      # Optional: also print matched attempts to this container's Docker logs.
+      PRINT_TO_CONSOLE: "true"
+
+      # Optional: seconds to wait before retrying when the Terraria
+      # container is missing or the log stream drops.
+      RETRY_SECONDS: "15"
+
+    volumes:
+      # Required so this container can read logs from the Terraria container.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+      # Where logs are saved on Unraid.
+      - /mnt/user/appdata/terraria-connection-logger/logs:/logs

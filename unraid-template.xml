@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>terraria-connection-logger</Name>
+  <Repository>terraria-connection-logger:latest</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support/>
+  <Project/>
+  <Overview>Monitors a Terraria server container's Docker logs and records connection attempts (IP and port) to a CSV file. Point it at your Terraria container by name (recommended) or ID.</Overview>
+  <Category>Tools: GameServers:</Category>
+  <WebUI/>
+  <TemplateURL/>
+  <Icon>https://terraria.org/favicon.ico</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config
+    Name="Terraria Container"
+    Target="TERRARIA_CONTAINER"
+    Default="terraria"
+    Mode=""
+    Description="Name (recommended) or ID of your Terraria container. The name is stable; an ID like 8ec2734d585e changes when the container is recreated."
+    Type="Variable"
+    Display="always"
+    Required="true"
+    Mask="false">terraria</Config>
+  <Config
+    Name="Print To Console"
+    Target="PRINT_TO_CONSOLE"
+    Default="true"
+    Mode=""
+    Description="Also print matched connection attempts to this container's log."
+    Type="Variable"
+    Display="always"
+    Required="false"
+    Mask="false">true</Config>
+  <Config
+    Name="Retry Seconds"
+    Target="RETRY_SECONDS"
+    Default="15"
+    Mode=""
+    Description="Seconds to wait before retrying when the Terraria container is missing or the log stream drops."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">15</Config>
+  <Config
+    Name="Log File Path (in container)"
+    Target="LOG_FILE"
+    Default="/logs/terraria_connection_attempts.log"
+    Mode=""
+    Description="Path inside the container where the CSV log is written. Must live under the /logs mount."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">/logs/terraria_connection_attempts.log</Config>
+  <Config
+    Name="Logs"
+    Target="/logs"
+    Default="/mnt/user/appdata/terraria-connection-logger/logs"
+    Mode="rw"
+    Description="Where connection logs are saved on Unraid."
+    Type="Path"
+    Display="always"
+    Required="true"
+    Mask="false">/mnt/user/appdata/terraria-connection-logger/logs</Config>
+  <Config
+    Name="Docker Socket"
+    Target="/var/run/docker.sock"
+    Default="/var/run/docker.sock"
+    Mode="ro"
+    Description="Read-only access to the Docker socket so the logger can read the Terraria container's logs. Required."
+    Type="Path"
+    Display="advanced"
+    Required="true"
+    Mask="false">/var/run/docker.sock</Config>
+</Container>
