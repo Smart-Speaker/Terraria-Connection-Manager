@@ -24,18 +24,43 @@ container — it only reads its log stream.
 
 ## Configuration
 
-All options are environment variables:
+This container has two kinds of settings. In Unraid's **Add Container** screen
+each row has a **Type** dropdown that is either *Variable* or *Path*:
+
+- **Variable** — a key/value setting passed to the program as an environment
+  variable (Docker `-e KEY=value`). Just text.
+- **Path** — a folder/file mapping between your Unraid server (the host) and
+  the container (Docker `-v host:container`). This is how files get shared in
+  and out of the container.
+
+Both are required for the logger to work. The two Paths in particular are
+mandatory — without them the container can't read Docker and won't keep your
+log file.
+
+### Variables (`-e`)
 
 | Variable             | Default                                      | Description                                                                                   |
 | -------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `TERRARIA_CONTAINER` | `terraria`                                   | Name (recommended) or ID of your Terraria container, e.g. `terraria` or `8ec2734d585e`.       |
-| `LOG_FILE`           | `/logs/terraria_connection_attempts.log`     | Path inside the container where the CSV is written. Keep it under the `/logs` mount.           |
+| `LOG_FILE`           | `/logs/terraria_connection_attempts.log`     | Path **inside** the container where the CSV is written. Must live under the `/logs` Path below.|
 | `PRINT_TO_CONSOLE`   | `true`                                       | Also print matched attempts to this container's Docker logs.                                  |
 | `RETRY_SECONDS`      | `15`                                         | Wait time before retrying when the Terraria container is missing or the log stream drops.     |
 
 > **Name vs. ID:** A container **name** (like `terraria`) is stable. A short
 > **ID** (like `8ec2734d585e`) changes every time the container is recreated —
 > which Unraid does on every update or template edit. Prefer the name.
+
+### Paths (`-v`) — required
+
+| Container path         | Host path (example)                                        | Mode | Why                                                                                  |
+| ---------------------- | ---------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------ |
+| `/var/run/docker.sock` | `/var/run/docker.sock`                                     | ro   | Lets this container read the Terraria container's logs. Without it nothing works.    |
+| `/logs`                | `/mnt/user/appdata/terraria-connection-logger/logs`        | rw   | Where the CSV is saved on your server so it survives restarts. `LOG_FILE` points here.|
+
+> **How the two relate:** `LOG_FILE` is a *Variable* pointing at a path *inside*
+> the container (`/logs/...`). `/logs` is a *Path* that maps that in-container
+> folder to a real folder on your Unraid array. Keep `LOG_FILE` under `/logs` so
+> the file lands in the host folder you mapped.
 
 ## Run with Docker Compose
 
